@@ -1,0 +1,11 @@
+This includes the corresponding coordinate file for the training and testing data(bed format 0-based hg19 coordinates). The regions are 200bp-wide which corresponds to the center 200bp region used for determining labels. Note that the input sequence also include 800bp of flanking sequences.
+
+Each mat file corresponds to a block of lines in the file.
+
+train.mat: line 1-2200000
+valid.mat: line 2200001-2204000
+test.mat: lines corresponding to chr8 and chr9
+
+Note that all the files include sequences and labels for both forward and complementary sequences. Thus the corresponding coordinates for train.mat, for example, is actually line 1, ...., line 2200000, line 1, line 2200000.
+
+Jian
