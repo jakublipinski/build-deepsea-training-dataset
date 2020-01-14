@@ -103,7 +103,7 @@ We get zero differences for the valid and test sets.
 
 ## Training the DeepSEA model with custom datasets on Google Colab
 
-You can train the DeepSEA model using the generated datasets on Google Colab. The following notebook allows to train the model on 4 different datasets:
+You can train the DeepSEA model using the generated datasets on Google Colab [with Keras](https://github.com/zj-zhang/deepsea-keras). The following notebook allows to train the model on 4 different datasets:
 
 * The original dataset
 * The regenerated dataset
