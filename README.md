@@ -119,7 +119,7 @@ We get the following AUC after training the model on these datasets (epochs:3, b
 | The original dataset                      | 0.9176 |
 | The regenerated dataset                   | 0.9191 |
 | The regenerated dataset with all the bins |        |
-| The custom ENCODE dataset                 |        |
+| The custom ENCODE dataset                 | 0.8441 |
 
 ## Differences from the original dataset
 
@@ -178,10 +178,10 @@ Create datasets:
 ```
 python build.py \
 --metadata_file encode_data/metadata.tsv \
---filter "Output type=optimal IDR thresholded peaks" \
+--filter "Output type=conservative IDR thresholded peaks" \
 --beds_folder encode_data/ \
 --hg19 ~/BioData/hg19.fa \
---valid_ratio .1 \
+--valid_ratio .0.5 \
 --train_filename encode_out/train.mat \
 --valid_filename encode_out/valid.mat \
 --test_filename encode_out/test.mat \
@@ -198,3 +198,5 @@ Please note that you can filter the metadata by using the `--filter` option.
 ## Further work
 
 Currently only the hg19 genome assembly is supported by it should be reasonably easy to support others. I welcome your PRs.
+
+The whole tool can be significantly sped up by using the Python `multiprocessing` module.
