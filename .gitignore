@@ -1,0 +1,6 @@
+data/*.narrowPeak
+encode_data
+venv
+out
+encode_out
+data/*.mat
