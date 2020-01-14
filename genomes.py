@@ -17,7 +17,7 @@ def chr_name_to_no(chr_name):
         return CHR_X
     if chr_name == "chrY":
         return CHR_Y
-    match = re.match(r"chr(\d+)", chr_name)
+    match = re.match(r"chr(\d+)$", chr_name)
     if match:
         return int(match.groups()[0]) - 1
     raise ValueError(f"'{chr_name}' is not a valid chromosome name")
@@ -55,7 +55,7 @@ class Genome:
         for record in SeqIO.parse(self.__genome_filename, "fasta"):
             chr_no = self.id_to_chr_no(record.id)
             if chr_no >=0:
-                logging.debug(f"Reading chromosome# {chr_no+1} from {self.__genome_filename}")
+                logging.debug(f"Reading chromosome {record.id} (#{chr_no}) from {self.__genome_filename}")
                 self.__seq[chr_no] = record.seq.upper()
 
     def id_to_chr_no(self, id):
@@ -78,9 +78,8 @@ class Genome:
         complementary : bool (default=False)
             Whether to fill complementary strand (reverse order)
         """
+        start = min(start, len(self.__seq[chr_no])-window_size)
         for i in range(window_size):
-            start = min(start, len(self.__seq[chr_no])-window_size)
-            start = max(start, 0)
             if  not complementary:
                 data[i]=self.__base2mat[ord(self.__seq[chr_no][start+i])]
             else:
@@ -96,9 +95,7 @@ class Hg19(Genome):
 
     def id_to_chr_no(self, id):
         """Translate the record id into a corresponding chromosome number. Considers fully assembled chromosome only."""
-        if id in ["chrX", "chrY"]:
-            return MAX_CHR-1
-        z = re.match(r"chr(\d+)$", id)
-        if not z:
+        try:
+            return chr_name_to_no(id)
+        except ValueError:
             return -1
-        return int(z.groups()[0]) - 1
