@@ -28,8 +28,16 @@ class Feature:
         """Add genome position to the list of genome regions."""
         self.__chr_regions[chr_no].append(ChrRegion(start, end))
 
-    def read_bed(self, filename):
-        """Read the narrow peaks from the bed file and add them to the list of genome regions."""
+    def read_bed(self, filename, signal_threshold = None):
+        """Read the narrow peaks from the bed file and add them to the list of genome regions.
+        
+        Parameters
+        ----------
+        Filename : str
+            Bed filename
+        signal_threshold : float (default=None)
+            The signal threshold to add a region from the bed file. Add all if not provided
+        """
         with open(filename) as bedfile:
             logging.debug(f"Reading regions from {filename}")
             reader = csv.reader(bedfile, delimiter='\t')
@@ -38,7 +46,8 @@ class Feature:
                     chr_no = chr_name_to_no(row[0])
                 except ValueError:
                     continue
-                self.__add_region(chr_no, int(row[1]), int(row[2]))
+                if not signal_threshold or float(row[6]) >= signal_threshold:
+                    self.__add_region(chr_no, int(row[1]), int(row[2]))
         self.__bins = None
 
     @property
@@ -89,7 +98,7 @@ class Features:
             for row in reader:
                 self.__metadata.append(row)
 
-    def read_beds(self, beds_folder, filter):
+    def read_beds(self, beds_folder, filter, signal_threshold=None):
         """Read the narrow peaks from the bed files.
 
         Parameters
@@ -98,6 +107,8 @@ class Features:
             The path to the folder where all the bed files are located
         filter : set
             The set of filters to apply to the metadata file e.g. {"Lab":"Michael Snyder, Stanford", "Assembly":"hg19"}
+        signal_threshold : float (default=None)
+            The signal threshold to add a region from the bed file. Add all if not provided
         """ 
         for row in self.__metadata:
             if not filter or filter.items() <= row.items(): # checks if row contains filter
@@ -105,10 +116,10 @@ class Features:
                 filename = os.path.join(beds_folder, f"{filename}")
                 feature = Feature(self.__bin_size)
                 try:
-                    feature.read_bed(filename)
+                    feature.read_bed(filename, signal_threshold=signal_threshold)
                 except FileNotFoundError:
                     filename += ".bed"
-                    feature.read_bed(filename)
+                    feature.read_bed(filename, signal_threshold=signal_threshold)
                 self.__features.append(feature)
         self.__bins = None
 

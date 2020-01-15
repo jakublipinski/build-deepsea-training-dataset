@@ -47,6 +47,7 @@ parser.add_argument("--train_filename", help="Output train dataset filename (.ma
 parser.add_argument("--valid_filename", help="Output valid dataset filename (.mat format)" )
 parser.add_argument("--test_filename", help="Output test dataset filename (.mat format)")
 parser.add_argument("--filter", action="append", help="Add condition to filter the metadata file eg. -f\"Lab=Michael Snyder, Stanford\" -f\"Assembly=hg19\"")
+parser.add_argument("--signal_threshold", type=float, help="Signal threshold from which to add positions from the bed file")
 parser.add_argument("--complementary_sequence", type=bool, default=True, help = "Add complementary sequence (default=True)")
 args = parser.parse_args()
 
@@ -63,7 +64,7 @@ create_data = create_train_data or create_valid_data or create_test_data
 create_labels = create_train_labels or create_valid_labels or create_test_labels
 
 features = Features(args.metadata_file, args.bin_size)
-features.read_beds(args.beds_folder, filter)
+features.read_beds(args.beds_folder, filter, args.signal_threshold)
 
 hg19 = None
 if create_data:
