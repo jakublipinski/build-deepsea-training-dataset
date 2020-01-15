@@ -60,6 +60,7 @@ create_valid_labels = args.valid_labels_filename or args.valid_filename
 create_test_data = args.test_data_filename or args.valid_filename
 create_test_labels = args.test_labels_filename or args.valid_filename
 create_data = create_train_data or create_valid_data or create_test_data
+create_labels = create_train_labels or create_valid_labels or create_test_labels
 
 features = Features(args.metadata_file, args.bin_size)
 features.read_beds(args.beds_folder, filter)
@@ -108,50 +109,51 @@ train_idx = 0
 valid_idx = 0
 test_idx = 0
 
-i=0
-for chr_no in chr_nos_sorted_by_name():
-    for bin_start in sorted(bins[chr_no]):
-        if chr_no in [CHR_8, CHR_9]:
-            if test_idx < test_size:
-                fill(features, hg19, bin_start, chr_no, args.bin_size, args.window_size, args.complementary_sequence, \
-                    create_test_data, create_test_labels, test_size, test_data, test_labels, test_idx)
-                test_idx += 1
-                i+=1
-        else:
-            if train_idx<train_size:
-                fill(features, hg19, bin_start, chr_no, args.bin_size , args.window_size, args.complementary_sequence, \
-                    create_train_data, create_train_labels, train_size, train_data, train_labels, train_idx)
-                train_idx += 1
-                i+=1
-            elif valid_idx<valid_size:
-                fill(features, hg19, bin_start, chr_no, args.bin_size, args.window_size, args.complementary_sequence, \
-                    create_valid_data, create_valid_labels, valid_size, valid_data, valid_labels, valid_idx)
-                valid_idx += 1
-                i+=1
-            
-        if i%1000 == 0:
-            logging.debug(f"{100*i/(train_size+valid_size+test_size):.2f}%")
+if create_labels or create_data:
+    i=0
+    for chr_no in chr_nos_sorted_by_name():
+        for bin_start in sorted(bins[chr_no]):
+            if chr_no in [CHR_8, CHR_9]:
+                if test_idx < test_size:
+                    fill(features, hg19, bin_start, chr_no, args.bin_size, args.window_size, args.complementary_sequence, \
+                        create_test_data, create_test_labels, test_size, test_data, test_labels, test_idx)
+                    test_idx += 1
+                    i+=1
+            else:
+                if train_idx<train_size:
+                    fill(features, hg19, bin_start, chr_no, args.bin_size , args.window_size, args.complementary_sequence, \
+                        create_train_data, create_train_labels, train_size, train_data, train_labels, train_idx)
+                    train_idx += 1
+                    i+=1
+                elif valid_idx<valid_size:
+                    fill(features, hg19, bin_start, chr_no, args.bin_size, args.window_size, args.complementary_sequence, \
+                        create_valid_data, create_valid_labels, valid_size, valid_data, valid_labels, valid_idx)
+                    valid_idx += 1
+                    i+=1
+                
+            if i%1000 == 0:
+                logging.debug(f"{100*i/(train_size+valid_size+test_size):.2f}%")
 
-logging.debug("Saving files...")
+    logging.debug("Saving files...")
 
-if args.train_filename:
-    save_to_mat(args.train_filename, train_data, train_labels, "train")
-if args.valid_filename:
-    save_to_mat(args.valid_filename, valid_data, valid_labels, "valid")
-if args.test_filename:
-    save_to_mat(args.test_filename, test_data, test_labels, "test")
+    if args.train_filename:
+        save_to_mat(args.train_filename, train_data, train_labels, "train")
+    if args.valid_filename:
+        save_to_mat(args.valid_filename, valid_data, valid_labels, "valid")
+    if args.test_filename:
+        save_to_mat(args.test_filename, test_data, test_labels, "test")
 
-if args.train_data_filename:
-    np.save(args.train_data_filename, train_data)
-if args.train_labels_filename:
-    np.save(args.train_labels_filename, train_labels)
-if args.valid_data_filename: 
-    np.save(args.valid_data_filename, valid_data)
-if args.valid_labels_filename:
-    np.save(args.valid_labels_filename, valid_labels)
-if args.test_data_filename:
-    np.save(args.test_data_filename, test_data)
-if args.test_labels_filename:
-    np.save(args.test_labels_filename, test_labels)
+    if args.train_data_filename:
+        np.save(args.train_data_filename, train_data)
+    if args.train_labels_filename:
+        np.save(args.train_labels_filename, train_labels)
+    if args.valid_data_filename: 
+        np.save(args.valid_data_filename, valid_data)
+    if args.valid_labels_filename:
+        np.save(args.valid_labels_filename, valid_labels)
+    if args.test_data_filename:
+        np.save(args.test_data_filename, test_data)
+    if args.test_labels_filename:
+        np.save(args.test_labels_filename, test_labels)
 
 logging.debug("Done")
