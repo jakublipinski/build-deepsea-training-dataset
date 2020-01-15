@@ -7,7 +7,7 @@ from collections import namedtuple
 
 from genomes import chr_name_to_no, MAX_CHR
 
-ChrRegion = namedtuple("ChrRegion", ["start", "end"])
+ChrRegion = namedtuple("ChrRegion", ["start", "end", "signal"])
 
 class Feature:
     """A class representing a chromatin feature (e.g. CTCF, RBBP5) and its binding location in a particular reference genome."""
@@ -23,10 +23,15 @@ class Feature:
         self.__chr_regions = [list() for chr in range(MAX_CHR)]
         self.__bin_size = bin_size
         self.__bins = None
+        self.__bin_signals = None
 
-    def __add_region(self, chr_no, start, end):
+    @property
+    def bin_signals(self):
+        return self.__bin_signals
+
+    def __add_region(self, chr_no, start, end, signal):
         """Add genome position to the list of genome regions."""
-        self.__chr_regions[chr_no].append(ChrRegion(start, end))
+        self.__chr_regions[chr_no].append(ChrRegion(start, end, signal))
 
     def read_bed(self, filename, signal_threshold = None):
         """Read the narrow peaks from the bed file and add them to the list of genome regions.
@@ -47,7 +52,7 @@ class Feature:
                 except ValueError:
                     continue
                 if not signal_threshold or float(row[6]) >= signal_threshold:
-                    self.__add_region(chr_no, int(row[1]), int(row[2]))
+                    self.__add_region(chr_no, int(row[1]), int(row[2]), float(row[6]))
         self.__bins = None
 
     @property
@@ -61,6 +66,7 @@ class Feature:
         if self.__bins:
             return self.__bins
         self.__bins = [set() for _ in range(MAX_CHR)]
+        self.__bin_signals = [dict() for _ in range(MAX_CHR)]
         for chr_no in range(MAX_CHR):
             for region in self.__chr_regions[chr_no]:
                 idx = region.start//self.__bin_size
@@ -69,6 +75,13 @@ class Feature:
                     bin_end = bin_start + self.__bin_size
                     if max(0, min(bin_end, region.end) - max(bin_start, region.start)) > self.__bin_size //2:
                         self.__bins[chr_no].add(bin_start)
+
+                        signal = region.signal
+                        if bin_start in self.__bin_signals[chr_no]:
+                            self.__bin_signals[chr_no][bin_start].append(signal)
+                        else:
+                            self.__bin_signals[chr_no][bin_start] = [signal]
+
                     if bin_end >= region.end:
                         break
                     idx += 1
@@ -98,6 +111,10 @@ class Features:
             for row in reader:
                 self.__metadata.append(row)
 
+    @property
+    def features(self):
+        return self.__features
+
     def read_beds(self, beds_folder, filter, signal_threshold=None):
         """Read the narrow peaks from the bed files.
 
@@ -121,6 +138,7 @@ class Features:
                     filename += ".bed"
                     feature.read_bed(filename, signal_threshold=signal_threshold)
                 self.__features.append(feature)
+            break
         self.__bins = None
 
     def read_bins(self, bins_file):

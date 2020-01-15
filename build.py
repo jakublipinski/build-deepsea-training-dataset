@@ -71,9 +71,42 @@ if create_data:
     hg19 = Hg19(args.hg19)
     hg19.read_genome()
 
+a = features.bins
 if args.pos:
     features.read_bins(args.pos)
 bins = features.bins
+
+from genomes import MAX_CHR
+signal_sum, signal_cnt = 0, 0
+for chr_no in range(MAX_CHR):
+    for bin in bins[chr_no]:
+        for feature in features.features:
+            if bin in feature.bin_signals[chr_no]:
+                signal_sum += sum(feature.bin_signals[chr_no][bin])
+                signal_cnt += len(feature.bin_signals[chr_no][bin])
+
+print(f"BINS Signal avg: {signal_sum/signal_cnt:.4f}")                
+
+signal_sum, signal_cnt = 0, 0
+for chr_no in range(MAX_CHR):
+    for feature in features.features:
+        for bin,signals in feature.bin_signals[chr_no].items():
+            signal_sum += sum(signals)
+            signal_cnt += len(signals)
+
+print(f"FEATURES Signal avg: {signal_sum/signal_cnt:.4f}")                
+
+signal_sum, signal_cnt = 0, 0
+for chr_no in range(MAX_CHR):
+    for feature in features.features:
+        for elem in feature.bin_signals[chr_no].keys():
+            if not elem in bins[chr_no]:
+                signal_sum += sum(feature.bin_signals[chr_no][elem])
+                signal_cnt += len(feature.bin_signals[chr_no][elem])
+
+print(f"NO BINS Signal avg: {signal_sum/signal_cnt:.4f}")                
+
+exit()
 
 train_size = features.no_of_bins()
 if args.train_size:
