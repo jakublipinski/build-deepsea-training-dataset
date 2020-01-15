@@ -1,6 +1,10 @@
 # Build DeepSEA training dataset
 
-[DeepSEA](http://deepsea.princeton.edu/) is a deep learning-based algorithmic framework for predicting the chromatin effects of sequence alterations with single nucleotide sensitivity. The DeepSEA authors proposed a format of the training data which become a standard for training similar algorithms. They [published the training dataset](http://deepsea.princeton.edu/media/code/deepsea_train_bundle.v0.9.tar.gz) used to train their model. This project allows to rebuild the published dataset from the raw data as well as build custom datasets that can be used with DeepSea and related algorithms.
+[DeepSEA](http://deepsea.princeton.edu/) is a deep learning-based algorithmic framework for predicting the chromatin effects of sequence alterations with single nucleotide sensitivity. The DeepSEA authors proposed a format of the training data which become a standard for training similar algorithms. They [published the training dataset](http://deepsea.princeton.edu/media/code/deepsea_train_bundle.v0.9.tar.gz) used to train their model. 
+
+This project allows to rebuild the published dataset from the raw data as well as build custom datasets that can be used with DeepSea and related algorithms.
+
+(The project grew from my curiosity as to why I <ins>can</ins> reproduce the high ROC AUC while training the DeepSEA model with the dataset provided by the authors but I <ins>cannot</ins> match it when using my own custom dataset built according to the specification from the paper.)
 
 ## The format of the training data
 
@@ -10,7 +14,7 @@ The training data format is described in the [Predicting effects of noncoding va
 
 > To prepare the input for the deep convolutional network model, we split the genome into 200-bp bins. For each bin we computed the label for all 919 chromatin features; a chromatin feature was labeled 1 if more than half of the 200-bp bin is in the peak region and 0 otherwise.
 
-> We focused on the set of 200-bp bins with at least one TF bind- ing event, resulting in 521,636,200 bp of sequences (17% of whole genome), which was used for training and evaluating chroma- tin feature prediction performance. (Variant analyses were not restricted to this region.)
+> We focused on the set of 200-bp bins with at least one TF bind- ing event, resulting in 521,636,200 bp of sequences (17% of whole genome), which was used for training and evaluating chromatin feature prediction performance. (Variant analyses were not restricted to this region.)
 
 > Each training sample consists of a 1,000-bp sequence from the human GRCh37 reference genome centered on each 200-bp bin and is paired with a label vector for 919 chromatin features. The 1,000-bp DNA sequence is represented by a 1,000 × 4 binary matrix, with columns corresponding to A, G, C and T. The 400-bp flanking regions at the two sides provide extra contextual information to the model.
 
@@ -63,7 +67,7 @@ The script will generate 9 files in the `out` folder.
 
 ## Comparing generated dataset with the original one
 
-We can now compare the generated datasets with the original ones. Download and uncompress the original dataset to the `data` folder first.
+We can now compare the generated datasets with the ones provided by the authors. Download and uncompress the original dataset to the `data` folder first.
 
 ```
 cd data
@@ -103,35 +107,39 @@ We get zero differences for the valid and test sets.
 
 ## Training the DeepSEA model with custom datasets on Google Colab
 
-You can train the DeepSEA model using the generated datasets on Google Colab [with Keras](https://github.com/zj-zhang/deepsea-keras). The following notebook allows to train the model on 4 different datasets:
+You can train the DeepSEA model using the generated datasets on Google Colab [with Keras](https://github.com/zj-zhang/deepsea-keras). The following notebook allows to train the model on 5 different datasets:
 
 * The original dataset
-* The regenerated dataset
-* The regenerated dataset with all the bins where there is at least one chromatin feature. This dataset does not use the bins listed in the `allTFs.pos.bed` file
-* The custom dataset based on ENCODE project
+* The regenerated dataset with the bins from `allTFs.pos.bed` file
+* The regenerated dataset with all the bins (strictly following the spec)<sup>1</sup>
+* The regenerated dataset with the the bins for which chromatin feature signal enrichment ([`signalValue`](https://genome.ucsc.edu/FAQ/FAQformat.html#format12)) is at least `7`
+* The custom dataset based on ENCODE project with all the bins (strictly following the spec)
+* The custom dataset based on ENCODE project with the the bins for which chromatin feature signal enrichment ([`signalValue`](https://genome.ucsc.edu/FAQ/FAQformat.html#format12)) is at least `50`
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1Yqmhn_2FkboPXdF_dgx040m7Yjk2WEwz)
 
-We get the following AUC after training the model on these datasets (epochs:3, batch size: 1000):
+<sup>1</sup> You cannot train the model on Google Colab with this dataset due to its large size
 
-| Dataset                                   | AUC    |
+We get the following ROC AUC after training the model on these datasets (epochs:3, batch size: 1000):
+
+| Dataset                                   | ROC AUC |
 | ----------------------------------------- | ------:|
 | The original dataset                      | 0.9176 |
-| The regenerated dataset                   | 0.9191 |
-| The regenerated dataset with all the bins |        |
+| The regenerated dataset (`allTFs.pod.bed`)| 0.9191 |
+| The regenerated dataset (all the bins)    | 0.8548<sup>2</sup>|
+| The regenerated dataset (Signal >= 7)     | 0.9026 |
 | The custom ENCODE dataset                 | 0.8441 |
+| The custom ENCODE dataset (Signal >= 50)  | 0.8796 |
 
-## Differences from the original dataset
+<sup>2</sup> Run only for 1 epoch because of the large dataset size.
 
-The 0.10% difference between the original dataset and the one generated using the tool must most likely come from some off-by-one difference in  the algorithm which assigns chromatin features to particular bins.
+## Differences from the original dataset and their reasons
+
+The 0.10% difference between the original dataset and the one generated using the tool must most likely come from some off-by-one difference in  the implementation of the algorithm which assigns chromatin features to particular bins.
 
 The difference in the genome data is negligible.
 
-The interesting difference appears when you regenerate the dataset strictly according to the description from the paper and without limiting the bins to the ones listed in the `allTFs.pos.bed`
-
-> We focused on the set of 200-bp bins with at least one TF bind- ing event, resulting in 521,636,200 bp of sequences (17% of whole genome)
-
-This tool identifies 6,575,911 training bins (instead of 4,400,000) and 641,600 testing bins (instead of 455,024):
+The interesting difference appears when you regenerate the dataset strictly according to the description from the paper and without limiting the bins to the ones listed in the `allTFs.pos.bed`. In such case this tool identifies 6,575,911 training bins (instead of 4,400,000) and 641,600 testing bins (instead of 455,024):
 
 ```
 mkdir out2
@@ -151,7 +159,30 @@ python build.py \
 --test_labels_filename out2/test_labels.npy
 ```
 
-TODO: Discuss the AUC.
+It seems the selection of the bins in the original dataset was based on the signal value of the corresponding chromatin features. If you exclude the features below some specified threshold using the `--signal_threshold` option you get the dataset with a ROC AUC as in the original dataset:
+
+```
+mkdir out3
+python build.py \
+--metadata_file data/deepsea_metadata.tsv \
+--beds_folder data/ \
+--hg19 ~/BioData/hg19.fa \
+--valid_size 4000 \
+--train_filename out3/train.mat \
+--valid_filename out3/valid.mat \
+--test_filename out3/test.mat \
+--train_data_filename out3/train_data.npy \
+--train_labels_filename out3/train_labels.npy \
+--valid_data_filename out3/valid_data.npy \
+--valid_labels_filename out3/valid_labels.npy \
+--test_data_filename out3/test_data.npy \
+--test_labels_filename out3/test_labels.npy \
+--signal_threshold 7
+```
+
+In such case the dataset contains 4,419,304 bins (original: 4,400,000) and ROC AUC (after 3 epochs) at xxx (original: 0.9176).
+
+(You can compare the average chromatin features signal of the bins included in the `allTFs.pos.bed` with all the bins by checking out the `calculate-signal-value` branch)
 
 ## Building custom dataset with data from ENCODE
 
@@ -194,6 +225,26 @@ python build.py \
 ```
 
 Please note that you can filter the metadata by using the `--filter` option.
+
+Consider excluding bins with low signal level using the `--signal_threshold` parameter:
+```
+python build.py \
+--metadata_file encode_data/metadata.tsv \
+--filter "Output type=conservative IDR thresholded peaks" \
+--beds_folder encode_data/ \
+--hg19 ~/BioData/hg19.fa \
+--valid_ratio .0.5 \
+--train_filename encode_out/train.mat \
+--valid_filename encode_out/valid.mat \
+--test_filename encode_out/test.mat \
+--train_data_filename encode_out/train_data.npy \
+--train_labels_filename encode_out/train_labels.npy \
+--valid_data_filename encode_out/valid_data.npy \
+--valid_labels_filename encode_out/valid_labels.npy \
+--test_data_filename encode_out/test_data.npy \
+--test_labels_filename encode_out/test_labels.npy
+--signal_threshold 50
+```
 
 ## Further work
 
