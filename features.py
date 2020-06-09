@@ -12,14 +12,17 @@ ChrRegion = namedtuple("ChrRegion", ["start", "end"])
 class Feature:
     """A class representing a chromatin feature (e.g. CTCF, RBBP5) and its binding location in a particular reference genome."""
 
-    def __init__(self, bin_size):
+    def __init__(self, bin_size, accession_id):
         """Create an empty Feature object.
 
         Parameters
         ----------
         bin_size : int
             The size of the bin
+        accession_id : string
+            Feature Accession id
         """
+        self.accession_id = accession_id
         self.__chr_regions = [list() for chr in range(MAX_CHR)]
         self.__bin_size = bin_size
         self.__bins = None
@@ -112,9 +115,9 @@ class Features:
         """ 
         for row in self.__metadata:
             if not filter or filter.items() <= row.items(): # checks if row contains filter
-                filename = row["File accession"]
-                filename = os.path.join(beds_folder, f"{filename}")
-                feature = Feature(self.__bin_size)
+                accession_id = row["File accession"]
+                filename = os.path.join(beds_folder, f"{accession_id}")
+                feature = Feature(self.__bin_size, accession_id)
                 try:
                     feature.read_bed(filename, signal_threshold=signal_threshold)
                 except FileNotFoundError:
@@ -149,10 +152,12 @@ class Features:
         """Determine if the particular chromatin feature exists in the particular bin."""
         return self.__features[feature_no].is_feature_in_bin(chr_no, bin_start)
 
-    def fill_labels(self, label, chr_no, bin_start):
+    def fill_labels(self, label, chr_no, bin_start, debug_row=None):
         """Fill the label vector with the information on which chromatin features are located in the particular bin."""
         for i in range(len(self.__features)):
             label[i] = 1 if self.is_feature_in_bin(i, chr_no, bin_start) else 0
+            if debug_row is not None:
+                debug_row[self.__features[i].accession_id] = label[i]
 
     def no_of_samples(self):
         """Return number of samples analyzed."""
@@ -168,3 +173,7 @@ class Features:
     def no_of_labels(self):
         """Return number of labels."""
         return len(self.__features)
+
+    def accession_ids(self):
+        """Return list of accession ids."""
+        return [feature.accession_id for feature in self.__features]

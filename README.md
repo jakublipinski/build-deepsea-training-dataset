@@ -246,6 +246,10 @@ python build.py \
 --signal_threshold 50
 ```
 
+## Debug info
+
+You can add `--save_debug_info True` command line argument to save all the data into human readable `.tsv` files: `debug_train.tsv`, `debug_valid.tsv` and `debug_test.tsv` to debug and verify the results.
+
 ## Further work
 
 Currently only the hg19 genome assembly is supported by it should be reasonably easy to support others. I welcome your PRs.

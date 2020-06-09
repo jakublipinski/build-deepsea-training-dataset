@@ -11,18 +11,24 @@ from genomes import Hg19, chr_nos_sorted_by_name, CHR_8, CHR_9
 from files import save_to_mat
 
 def fill(features, hg19, bin_start, chr_no, bin_size, window_size, complementary_sequence, \
-         create_data, create_labels, complementary_shift, data, labels, idx):
+         create_data, create_labels, complementary_shift, data, labels, idx, debug_writer=False):
     """Fill data and labels with DNA sequence and features vector.""" 
+    debug_row = dict() if debug_writer else None
     if create_data:
-        hg19.fill_window(data[idx], chr_no, bin_start - (window_size-bin_size)//2, window_size)
+        hg19.fill_window(data[idx], chr_no, bin_start - (window_size-bin_size)//2, window_size, debug_row=debug_row)
     if create_labels:
-        features.fill_labels(labels[idx], chr_no, bin_start)
-    if complementary_sequence:
-        if create_data:
-            features.fill_labels(labels[idx+complementary_shift], chr_no, bin_start)
-        if create_labels:
-            hg19.fill_window(data[idx+complementary_shift], chr_no, bin_start - (window_size-bin_size)//2, args.window_size, complementary=True)
+        features.fill_labels(labels[idx], chr_no, bin_start, debug_row=debug_row)
+    if debug_writer:
+        debug_writer.writerow(debug_row)
 
+    if complementary_sequence:
+        debug_row = dict() if debug_writer else None
+        if create_data:
+            features.fill_labels(labels[idx+complementary_shift], chr_no, bin_start, debug_row=debug_row)
+        if create_labels:
+            hg19.fill_window(data[idx+complementary_shift], chr_no, bin_start - (window_size-bin_size)//2, window_size, complementary=True, debug_row=debug_row)
+        if debug_writer:
+            debug_writer.writerow(debug_row)
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -31,7 +37,7 @@ parser.add_argument("--metadata_file", help="Metadata (.tsv) file in the format 
 parser.add_argument("--beds_folder", help="Path to the folder containing all the .bed files", required=True)
 parser.add_argument("--bin_size", type=int, default=200, help="Bin size (default: 200)")
 parser.add_argument("--window_size", type=int, default=1000, help="Window size (default: 1000)")
-parser.add_argument( "--train_size", type=int, help="Size of the training set. Will be multiplied by 2 if complementary sequence is True (default: number of all bins minus size of valid set)")
+parser.add_argument("--train_size", type=int, help="Size of the training set. Will be multiplied by 2 if complementary sequence is True (default: number of all bins minus size of valid set)")
 parser.add_argument("--valid_size", type=int, help="Size of the validation set. Will be multiplied by 2 if complementary sequence is True. (default: valid_ratio * number of all bins)")
 parser.add_argument("--valid_ratio", type=float, default=.05, help="Ration of validation / train set. Ignored if valid_size is provided")
 parser.add_argument("--test_size", type=int, help="Size of the test set. Will be multiplied by 2 if complementary sequence is True (default: number of all bins in chromosome 8 and 9)")
@@ -49,6 +55,7 @@ parser.add_argument("--test_filename", help="Output test dataset filename (.mat 
 parser.add_argument("--filter", action="append", help="Add condition to filter the metadata file eg. -f\"Lab=Michael Snyder, Stanford\" -f\"Assembly=hg19\"")
 parser.add_argument("--signal_threshold", type=float, help="Signal threshold from which to add positions from the bed file")
 parser.add_argument("--complementary_sequence", type=bool, default=True, help = "Add complementary sequence (default=True)")
+parser.add_argument("--save_debug_info", type=bool, default=False, help="Save debug info to debug_train.tsv, debug_valid.tsv and debug_test.tsv files")
 args = parser.parse_args()
 
 # change filter from command line arguments -f\"Lab=Michael Snyder, Stanford\" -f\"Assembly=hg19\" to {"Lab":"Michael Snyder, Stanford", "Assembly":"hg19"}
@@ -99,6 +106,16 @@ labels_size = features.no_of_labels()
 
 logging.info(f"train size: {train_size:,} valid size: {valid_size:,} test size: {test_size:,} bins: {features.no_of_bins():,} labels: {labels_size:,} samples: {features.no_of_samples():,}")
 
+debug_train, debug_valid, debug_test = None, None, None
+if args.save_debug_info:
+    fieldnames=["Chr_No", "Chr", "Start", "End", "Seq"]+features.accession_ids()
+    debug_train = csv.DictWriter(open("debug_train.tsv", "w"), fieldnames=fieldnames)
+    debug_train.writeheader()
+    debug_valid = csv.DictWriter(open("debug_valid.tsv", "w"), fieldnames=fieldnames)
+    debug_valid.writeheader()
+    debug_test = csv.DictWriter(open("debug_test.tsv", "w"), fieldnames=fieldnames)
+    debug_test.writeheader()
+
 train_data = np.ndarray(shape=(train_size * revx, args.window_size, 4), dtype=np.uint8)
 train_labels = np.zeros(shape=(train_size * revx, labels_size), dtype=np.uint8)
 valid_data = np.ndarray(shape=(valid_size * revx, args.window_size, 4), dtype=np.uint8)
@@ -117,18 +134,18 @@ if create_labels or create_data:
             if chr_no in [CHR_8, CHR_9]:
                 if test_idx < test_size:
                     fill(features, hg19, bin_start, chr_no, args.bin_size, args.window_size, args.complementary_sequence, \
-                        create_test_data, create_test_labels, test_size, test_data, test_labels, test_idx)
+                        create_test_data, create_test_labels, test_size, test_data, test_labels, test_idx, debug_test)
                     test_idx += 1
                     i+=1
             else:
                 if train_idx<train_size:
                     fill(features, hg19, bin_start, chr_no, args.bin_size , args.window_size, args.complementary_sequence, \
-                        create_train_data, create_train_labels, train_size, train_data, train_labels, train_idx)
+                        create_train_data, create_train_labels, train_size, train_data, train_labels, train_idx, debug_train)
                     train_idx += 1
                     i+=1
                 elif valid_idx<valid_size:
                     fill(features, hg19, bin_start, chr_no, args.bin_size, args.window_size, args.complementary_sequence, \
-                        create_valid_data, create_valid_labels, valid_size, valid_data, valid_labels, valid_idx)
+                        create_valid_data, create_valid_labels, valid_size, valid_data, valid_labels, valid_idx, debug_valid)
                     valid_idx += 1
                     i+=1
                 

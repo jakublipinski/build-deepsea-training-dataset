@@ -22,6 +22,14 @@ def chr_name_to_no(chr_name):
         return int(match.groups()[0]) - 1
     raise ValueError(f"'{chr_name}' is not a valid chromosome name")
 
+def chr_no_to_name(chr_no):
+    """Translate 0-indexed chromosome number to chromosome name."""
+    if chr_no == CHR_X:
+        return "chrX"
+    if chr_no == CHR_Y:
+        return "chrY"
+    return f"chr{chr_no+1}"
+
 def chr_nos_sorted_by_name():
     """Iterate through chromosome numbers in the order of their names e.g. "chr1", "chr10", "chr11",..."""
     chr_names = [f"chr{no+1}" for no in range(CHR_X)] + ["chrX", "chrY"]
@@ -62,7 +70,11 @@ class Genome:
         """Translate the chromosome id into its corresponding number. Must be overridden."""
         raise NotImplementedError("id_to_chr_no() should be overloaded")
 
-    def fill_window(self, data, chr_no, start, window_size, complementary=False):
+    def chr_no_to_name(self, chr_no):
+        """Translate the chromosome number into its corresponding id. Must be overridden."""
+        raise NotImplementedError("id_to_chr_no() should be overloaded")
+
+    def fill_window(self, data, chr_no, start, window_size, complementary=False, debug_row=None):
         """Fill one-hot vector corresponding to the genome sequence.
 
         Parameters
@@ -77,13 +89,24 @@ class Genome:
             The size of the window to fill
         complementary : bool (default=False)
             Whether to fill complementary strand (reverse order)
+        debug_row : dict()
+            If not None the debug info are added
         """
         start = min(start, len(self.__seq[chr_no])-window_size)
         for i in range(window_size):
-            if  not complementary:
+            if not complementary:
                 data[i]=self.__base2mat[ord(self.__seq[chr_no][start+i])]
             else:
                 data[i]=self.__base2mat_rev[ord(self.__seq[chr_no][start+window_size-i-1])]
+        if debug_row is not None:
+            debug_row["Chr_No"] = chr_no
+            debug_row["Chr"] = self.chr_no_to_name(chr_no)
+            debug_row["Start"] = start
+            debug_row["End"] = start + window_size
+            if not complementary:
+                debug_row["Seq"] = self.__seq[chr_no][start:start+window_size]
+            else:
+                debug_row["Seq"] = self.__seq[chr_no][start+window_size-1:start-1:-1]
         
 
 class Hg19(Genome):
@@ -99,3 +122,7 @@ class Hg19(Genome):
             return chr_name_to_no(id)
         except ValueError:
             return -1
+
+    def chr_no_to_name(self, chr_no):
+        """Translate the chromosome no into a corresponding chromosome name. Considers fully assembled chromosome only."""
+        return chr_no_to_name(chr_no)
