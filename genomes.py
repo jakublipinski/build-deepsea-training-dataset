@@ -6,6 +6,7 @@ import logging
 from Bio import SeqIO
 
 MAX_CHR = 24 #number of chromosomes. 0-21 autosomes. 22 - chrX. 23 - chrY
+CHR_7 = 7-1
 CHR_8 = 8-1
 CHR_9 = 9-1
 CHR_X = MAX_CHR-2

@@ -7,7 +7,7 @@ import logging
 import numpy as np
 
 from features import Features
-from genomes import Hg19, chr_nos_sorted_by_name, CHR_8, CHR_9
+from genomes import Hg19, chr_nos_sorted_by_name, CHR_7, CHR_8, CHR_9
 from files import save_to_mat
 
 def fill(features, hg19, bin_start, chr_no, bin_size, window_size, complementary_sequence, \
@@ -38,7 +38,7 @@ parser.add_argument("--beds_folder", help="Path to the folder containing all the
 parser.add_argument("--bin_size", type=int, default=200, help="Bin size (default: 200)")
 parser.add_argument("--window_size", type=int, default=1000, help="Window size (default: 1000)")
 parser.add_argument("--train_size", type=int, help="Size of the training set. Will be multiplied by 2 if complementary sequence is True (default: number of all bins minus size of valid set)")
-parser.add_argument("--valid_size", type=int, help="Size of the validation set. Will be multiplied by 2 if complementary sequence is True. (default: valid_ratio * number of all bins)")
+parser.add_argument("--valid_size", type=int, help="Size of the validation set. Will be multiplied by 2 if complementary sequence is True. (default: valid_ratio * number of all bins). Validation set is located at chromosome 7 starting from 30,508,751")
 parser.add_argument("--valid_ratio", type=float, default=.05, help="Ration of validation / train set. Ignored if valid_size is provided")
 parser.add_argument("--test_size", type=int, help="Size of the test set. Will be multiplied by 2 if complementary sequence is True (default: number of all bins in chromosome 8 and 9)")
 parser.add_argument("--pos", help="If provided loads bin positions from an external file")
@@ -138,15 +138,15 @@ if create_labels or create_data:
                     test_idx += 1
                     i+=1
             else:
-                if train_idx<train_size:
-                    fill(features, hg19, bin_start, chr_no, args.bin_size , args.window_size, args.complementary_sequence, \
-                        create_train_data, create_train_labels, train_size, train_data, train_labels, train_idx, debug_train)
-                    train_idx += 1
-                    i+=1
-                elif valid_idx<valid_size:
+                if chr_no == CHR_7 and bin_start >= 30508751 and valid_idx<valid_size:
                     fill(features, hg19, bin_start, chr_no, args.bin_size, args.window_size, args.complementary_sequence, \
                         create_valid_data, create_valid_labels, valid_size, valid_data, valid_labels, valid_idx, debug_valid)
                     valid_idx += 1
+                    i+=1
+                elif train_idx<train_size:
+                    fill(features, hg19, bin_start, chr_no, args.bin_size , args.window_size, args.complementary_sequence, \
+                        create_train_data, create_train_labels, train_size, train_data, train_labels, train_idx, debug_train)
+                    train_idx += 1
                     i+=1
                 
             if i%1000 == 0:
